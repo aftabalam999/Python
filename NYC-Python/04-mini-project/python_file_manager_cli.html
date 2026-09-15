@@ -1,0 +1,124 @@
+<h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;">Interactive terminal demo of a Python file manager script supporting create, read, update and delete operations</h2>
+<div style="background:#1b1713;border-radius:12px;overflow:hidden;border:0.5px solid var(--border);font-family:var(--font-mono);max-width:640px;margin:0 auto;">
+  <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;background:#231d17;border-bottom:1px solid #3a3025;">
+    <span style="width:11px;height:11px;border-radius:50%;background:#e0574a;display:inline-block;"></span>
+    <span style="width:11px;height:11px;border-radius:50%;background:#e0a83f;display:inline-block;"></span>
+    <span style="width:11px;height:11px;border-radius:50%;background:#5a9e5a;display:inline-block;"></span>
+    <span style="margin-left:8px;font-size:12px;color:#9a8f7d;">file_manager.py — python3</span>
+  </div>
+  <div id="term" style="padding:16px;height:340px;overflow-y:auto;font-size:13px;line-height:1.6;color:#ffb84d;white-space:pre-wrap;word-break:break-word;"></div>
+  <div style="display:flex;align-items:center;padding:10px 14px;border-top:1px solid #3a3025;background:#1f1a15;">
+    <span style="color:#ff9d2e;margin-right:8px;">&gt;</span>
+    <input id="cmdin" type="text" autocomplete="off" style="flex:1;background:transparent;border:none;outline:none;color:#ffcf80;font-family:var(--font-mono);font-size:13px;box-shadow:none;height:auto;padding:2px 0;" placeholder="type a number and press enter" />
+  </div>
+</div>
+<script>
+(function(){
+  var term = document.getElementById('term');
+  var input = document.getElementById('cmdin');
+  var vfs = {};
+  var state = { mode: 'menu', step: 0, temp: {} };
+
+  function print(text, cls){
+    var div = document.createElement('div');
+    div.textContent = text;
+    if(cls === 'sys') div.style.color = '#c9bfa8';
+    if(cls === 'ok') div.style.color = '#8fd18f';
+    if(cls === 'err') div.style.color = '#e0776a';
+    if(cls === 'prompt') div.style.color = '#ff9d2e';
+    div.style.margin = '2px 0';
+    term.appendChild(div);
+    term.scrollTop = term.scrollHeight;
+  }
+  function echo(cmd){ print('> ' + cmd, 'prompt'); }
+
+  function showMenu(){
+    print('press 1 for create the file', 'sys');
+    print('press 2 for reading the file', 'sys');
+    print('press 3 for updating the file', 'sys');
+    print('press 4 for deleting the file', 'sys');
+    state.mode = 'menu'; state.step = 0; state.temp = {};
+  }
+
+  function handle(raw){
+    var cmd = raw.trim();
+    echo(raw);
+    if(state.mode === 'menu'){
+      if(cmd === '1'){ state.mode='create'; state.step=1; print('please tell your file name with extention :-', 'sys'); return; }
+      if(cmd === '2'){ state.mode='read'; state.step=1; print('please tell your file name with extention :-', 'sys'); return; }
+      if(cmd === '3'){ state.mode='update'; state.step=1; print('please tell your file name with extention :-', 'sys'); return; }
+      if(cmd === '4'){ state.mode='delete'; state.step=1; print('please tell your file name with extention :-', 'sys'); return; }
+      print('an error occured as invalid choice, pick 1-4', 'err');
+      return;
+    }
+    if(state.mode === 'create'){
+      if(state.step === 1){
+        if(vfs.hasOwnProperty(cmd)){ print('Error file name already exists', 'err'); showMenu(); return; }
+        state.temp.name = cmd; state.step = 2;
+        print('What you want to write :-', 'sys');
+        return;
+      }
+      vfs[state.temp.name] = cmd;
+      print('your file is created successfully', 'ok');
+      showMenu();
+      return;
+    }
+    if(state.mode === 'read'){
+      if(!vfs.hasOwnProperty(cmd)){ print('Error file name not exists', 'err'); }
+      else { print('your file content is :', 'sys'); print(vfs[cmd]); }
+      showMenu();
+      return;
+    }
+    if(state.mode === 'update'){
+      if(state.step === 1){
+        if(!vfs.hasOwnProperty(cmd)){ print('Error file name not exists', 'err'); showMenu(); return; }
+        state.temp.name = cmd; state.step = 2;
+        print('Operations', 'sys');
+        print('  1. Renaming the file', 'sys');
+        print('  2. Appending the content', 'sys');
+        print('  3. Overwriting the file', 'sys');
+        print('Enter your option :-', 'sys');
+        return;
+      }
+      if(state.step === 2){
+        if(cmd === '1'){ state.step = 31; print('please tell your new file name with extention :-', 'sys'); return; }
+        if(cmd === '2'){ state.step = 32; print('Write here what you want to append :-', 'sys'); return; }
+        if(cmd === '3'){ state.step = 33; print('Write the text that you want to overwrite :-', 'sys'); return; }
+        print('an error occured as invalid option', 'err'); showMenu(); return;
+      }
+      if(state.step === 31){
+        if(vfs.hasOwnProperty(cmd)){ print('File name is already exists', 'err'); showMenu(); return; }
+        vfs[cmd] = vfs[state.temp.name];
+        delete vfs[state.temp.name];
+        print('File renamed successfully', 'ok'); showMenu(); return;
+      }
+      if(state.step === 32){
+        vfs[state.temp.name] += '\\n ' + cmd;
+        print('Your content append successfully', 'ok'); showMenu(); return;
+      }
+      if(state.step === 33){
+        vfs[state.temp.name] = cmd;
+        print('Your content overwritten successfully', 'ok'); showMenu(); return;
+      }
+    }
+    if(state.mode === 'delete'){
+      if(!vfs.hasOwnProperty(cmd)){ print('Error : File does not exists', 'err'); }
+      else { delete vfs[cmd]; print('File is deleted Successfully', 'ok'); }
+      showMenu();
+      return;
+    }
+  }
+
+  input.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){
+      var val = input.value;
+      if(val.trim() === '' && state.mode === 'menu'){ return; }
+      input.value = '';
+      handle(val);
+    }
+  });
+
+  showMenu();
+  input.focus();
+})();
+</script>
